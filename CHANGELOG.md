@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- 对齐官方插件基线：`dsh.manifestVersion: 1`；`engines.dsh` 保持 `>=0.2.1-rc.2 <0.3.0-0`，新增 `engines.node: >=22.19.0`；补 `publishConfig`，并在 `files` 中纳入 README、LICENSE、CHANGELOG、SECURITY。
+- README 语言规范修正：英文为 `README.md`、中文为 `README.zh.md`，切换链接与冒烟测试列表同步更新；两份 README 的规范对齐表补 `manifestVersion`、DSH 与 Node engines 行。
+- 新增 `SECURITY.md`：报告渠道、支持版本、权限边界与第三方数据说明。
+- GitHub Actions Node 矩阵改为 22.19.0 / 24。
+
 ## 0.1.3
 
 - 修正 `client.js` 的模块注册 id：包改名为 `dsh-image-viewer-pro` 后，注册 id 仍是 `@local/dsh-image-viewer-pro`，与 Host boot graph 的行 id（包名）不一致，浏览器加载时报 `loaded without registering "dsh-image-viewer-pro" via __ModuleLoader__.load`，整个插件不生效。现注册 id 与 `package.json` `name` 一致。

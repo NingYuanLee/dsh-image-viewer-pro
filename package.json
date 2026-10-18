@@ -28,6 +28,7 @@
     "screenshot"
   ],
   "engines": {
+    "node": ">=22.19.0",
     "dsh": ">=0.2.1-rc.2 <0.3.0-0"
   },
   "icon": "./icon.svg",
@@ -43,13 +44,22 @@
     "cordis.patch.yml",
     "icon.svg",
     "screenshots.json",
+    "SECURITY.md",
+    "README*",
+    "LICENSE",
+    "CHANGELOG.md",
     "locale/*.json",
     "docs/*.png"
   ],
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org",
+    "tag": "latest"
+  },
   "scripts": {
     "test": "node test/smoke.test.cjs"
   },
   "dsh": {
+    "manifestVersion": 1,
     "bundle": {
       "patch": "./cordis.patch.yml"
     },

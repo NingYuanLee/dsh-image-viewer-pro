@@ -109,7 +109,9 @@ async function main() {
     assert.strictEqual(manifest.dsh.client.immediately, true)
     // The bundle imports no client module, so it must not order itself behind one.
     assert.strictEqual(manifest.dsh.client.inject, undefined)
-    assert.ok(manifest.engines.dsh.length > 0)
+    assert.strictEqual(manifest.dsh.manifestVersion, 1)
+    assert.strictEqual(manifest.engines.dsh, '>=0.2.1-rc.2 <0.3.0-0')
+    assert.strictEqual(manifest.engines.node, '>=22.19.0')
     assert.ok(manifest.keywords.includes('dsh-plugin'))
   })
 
@@ -118,6 +120,9 @@ async function main() {
     for (const name of ['index.js', 'client.js', 'cordis.patch.yml', 'icon.svg', 'locale/zh.json', 'locale/en.json']) {
       const expected = name.startsWith('locale/') ? 'locale/*.json' : name
       assert.ok(manifest.files.includes(expected), 'files must include ' + expected)
+    }
+    for (const name of ['SECURITY.md', 'README*', 'LICENSE', 'CHANGELOG.md']) {
+      assert.ok(manifest.files.includes(name), 'files must include ' + name)
     }
     assert.strictEqual(manifest.exports['./package.json'], './package.json')
     assert.ok(manifest.exports['./locale/*.json'])
@@ -155,11 +160,14 @@ async function main() {
 
   // 11. Both READMEs carry the install command the plugin page hands out.
   check('README install command', () => {
-    for (const file of ['README.md', 'README.en.md']) {
+    for (const file of ['README.md', 'README.zh.md']) {
       const text = fs.readFileSync(path.join(root, file), 'utf8')
       assert.ok(text.includes('github:NingYuanLee/dsh-image-viewer-pro'), file)
       assert.ok(text.includes('dsh plugin --profile'), file)
+      assert.ok(!text.includes('README.en.md'), file)
     }
+    assert.ok(fs.readFileSync(path.join(root, 'README.md'), 'utf8').includes('[中文](README.zh.md)'))
+    assert.ok(fs.readFileSync(path.join(root, 'README.zh.md'), 'utf8').includes('[English](README.md)'))
   })
 
   console.log('ok: ' + passed + ' groups passed')

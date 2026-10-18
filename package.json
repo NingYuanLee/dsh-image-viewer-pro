@@ -1,0 +1,50 @@
+{
+  "name": "dsh-image-viewer-pro",
+  "version": "0.1.0",
+  "description": "A proper image viewer for DeepSeek Harness: zoom, pan, rotate, download, copy and gallery browsing for every image the chat renders.",
+  "type": "module",
+  "license": "MIT",
+  "author": "NingYuanLee <liyunningyuan@outlook.com>",
+  "homepage": "https://github.com/NingYuanLee/dsh-image-viewer-pro#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NingYuanLee/dsh-image-viewer-pro.git"
+  },
+  "bugs": {
+    "url": "https://github.com/NingYuanLee/dsh-image-viewer-pro/issues"
+  },
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "image-viewer",
+    "lightbox",
+    "zoom"
+  ],
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "locale/*.json"
+  ],
+  "scripts": {
+    "test": "node test/smoke.test.cjs"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-conversation"
+      ]
+    }
+  }
+}

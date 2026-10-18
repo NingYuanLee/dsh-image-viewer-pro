@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.2
+
+- 修正 cordis.patch.yml 的插件行名：包已改名为 dsh-image-viewer-pro，原先仍写 @local/dsh-image-viewer-pro，从 GitHub 安装后该层无法解析（实测 --dump-config 复现）。
+
 ## 0.1.1
 
 对齐 DSH 官方清单与 Web 样式规范：

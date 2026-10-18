@@ -67,6 +67,20 @@ dsh plugin --profile desktop remove dsh-image-viewer-pro
 - 实现方式是**捕获阶段接管 `<img>` 点击 + 纯 DOM 弹层**，不依赖官方 slot 契约，因此对图片位调整不敏感。
 - 需要 `remote` / `remote.session` 服务（用于「用默认应用打开」）；服务不可用时该按钮退化为提示。
 
+## 与 DSH 插件规范的对齐
+
+按官方《打包与安装插件》《添加 workspace 包》与社区 awesome-dsh-plugin 收录要求自查：
+
+| 要求 | 状态 |
+| --- | --- |
+| `package.json` 声明 `dsh.bundle`（可被 `dsh plugin add` 安装） | ✅ `dsh.bundle.patch` |
+| 仓库根提供 `cordis.patch.yml`，行名与包名一致 | ✅ `name: dsh-image-viewer-pro` |
+| 声明支持的 DSH 版本 | ✅ `engines.dsh: >=0.2.1-rc.2 <0.3.0` |
+| 插件元信息（标题/描述/图标） | ✅ `locale/{zh,en}.json` + `icon.svg`，并导出 `./package.json` 与 `./locale/*.json` |
+| 无构建步骤即可安装（GitHub 源安装不触发 `prepare`，无需 `allowBuilds`） | ✅ 纯 JS，已实测 `dsh plugin add github:...` |
+| Web 样式规范（语义 token、elevation 与 border 不配对、正圆 `corner-shape`、减少动效） | ✅ 见 `client.js` 的 `CSS` 常量 |
+| 真实可用代码 | ✅ 冒烟测试 + 实机验证 |
+
 ## 开发
 
 ```sh

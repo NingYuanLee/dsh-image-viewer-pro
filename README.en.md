@@ -67,6 +67,20 @@ Uninstalling restores the stock preview and never deletes sessions or images.
 - Implemented as a **capture-phase `<img>` click interceptor plus a plain DOM overlay**, so it does not depend on the official slot contracts.
 - Uses the `remote` / `remote.session` services for "open with default app"; when unavailable the action degrades to a notice.
 
+## Conformance with DSH plugin conventions
+
+Checked against the official *Packaging and installing plugins* / *Adding a workspace package* docs and the awesome-dsh-plugin listing requirements:
+
+| Requirement | Status |
+| --- | --- |
+| `package.json` declares `dsh.bundle` (installable via `dsh plugin add`) | ✅ `dsh.bundle.patch` |
+| Root `cordis.patch.yml` whose row name matches the package | ✅ `name: dsh-image-viewer-pro` |
+| Supported DSH version range | ✅ `engines.dsh: >=0.2.1-rc.2 <0.3.0` |
+| Presentation metadata (title / description / icon) | ✅ `locale/{zh,en}.json` + `icon.svg`, exporting `./package.json` and `./locale/*.json` |
+| Installable without a build step (no `prepare`, no `allowBuilds` for git installs) | ✅ plain JS, verified with `dsh plugin add github:...` |
+| Web styling rules (semantic tokens, no border+elevation pairing, `corner-shape` on circles, reduced motion) | ✅ see the `CSS` constant in `client.js` |
+| Real working code | ✅ smoke tests + live verification |
+
 ## Development
 
 ```sh

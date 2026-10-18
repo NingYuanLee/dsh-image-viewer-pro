@@ -1,7 +1,7 @@
 {
   "name": "dsh-image-viewer-pro",
-  "version": "0.1.2",
-  "description": "A proper image viewer for DeepSeek Harness: zoom, pan, rotate, download, copy and gallery browsing for every image the chat renders.",
+  "version": "0.1.3",
+  "description": "A proper image viewer for DeepSeek Harness: zoom, pan, rotate, download, copy, open with the default app, and gallery browsing for images inside the chat.",
   "type": "module",
   "main": "index.js",
   "license": "MIT",
@@ -17,13 +17,18 @@
   "keywords": [
     "dsh",
     "dsh-plugin",
+    "deepseek",
     "deepseek-harness",
+    "cordis-plugin",
     "image-viewer",
+    "image-gallery",
     "lightbox",
-    "zoom"
+    "zoom",
+    "pan",
+    "screenshot"
   ],
   "engines": {
-    "dsh": ">=0.2.1-rc.2 <0.3.0"
+    "dsh": ">=0.2.1-rc.2 <0.3.0-0"
   },
   "icon": "./icon.svg",
   "exports": {
@@ -37,7 +42,9 @@
     "client.js",
     "cordis.patch.yml",
     "icon.svg",
-    "locale/*.json"
+    "screenshots.json",
+    "locale/*.json",
+    "docs/*.png"
   ],
   "scripts": {
     "test": "node test/smoke.test.cjs"
@@ -48,10 +55,7 @@
     },
     "client": {
       "platform": "web",
-      "immediately": true,
-      "inject": [
-        "@deepseek-ai/dsh-client-ui-conversation"
-      ]
+      "immediately": true
     }
   }
 }

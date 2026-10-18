@@ -1,5 +1,8 @@
+// The loader keys bundles by the package name the Host puts on the boot graph
+// row (`window.__DSH_BOOT__.entries[].id`), so this id must stay identical to
+// `package.json` `name` — a scope-prefixed leftover silently fails registration.
 window.__ModuleLoader__.load({
-  id: '@local/dsh-image-viewer-pro',
+  id: 'dsh-image-viewer-pro',
   factory() {
     'use strict'
 
@@ -18,8 +21,10 @@ window.__ModuleLoader__.load({
         downloading: '下载中',
         downloaded: '已下载',
         downloadFailed: '下载失败',
+        downloadFallback: '已在新标签打开，请在浏览器中保存',
         copied: '已复制图片',
         copyFailed: '复制失败',
+        copyLink: '已复制图片链接',
         copy: '复制图片',
         openTab: '新标签打开',
         openLocal: '用默认应用打开',
@@ -28,7 +33,6 @@ window.__ModuleLoader__.load({
         zoomInput: '缩放比例，可输入百分比后回车',
         prev: '上一张',
         next: '下一张',
-        hint: '滚轮缩放 · 拖动平移 · 双击切换适应/原始 · ←/→ 切图 · Esc 关闭',
         of: '张',
         image: '图片',
       },
@@ -44,8 +48,10 @@ window.__ModuleLoader__.load({
         downloading: 'Downloading',
         downloaded: 'Downloaded',
         downloadFailed: 'Download failed',
+        downloadFallback: 'Opened in a new tab — save it from there',
         copied: 'Image copied',
         copyFailed: 'Copy failed',
+        copyLink: 'Image link copied',
         copy: 'Copy image',
         openTab: 'Open in new tab',
         openLocal: 'Open with default app',
@@ -54,7 +60,6 @@ window.__ModuleLoader__.load({
         zoomInput: 'Zoom percentage — type a value and press Enter',
         prev: 'Previous',
         next: 'Next',
-        hint: 'Wheel to zoom · drag to pan · double-click to toggle fit/actual · ←/→ to switch · Esc to close',
         of: 'of',
         image: 'image',
       },
@@ -83,13 +88,18 @@ window.__ModuleLoader__.load({
     /** File name for an image source: `?path=` targets keep their basename. */
     function fileNameOf(src) {
       const text = String(src || '')
-      if (text === '') return T.image
+      // Blob and data URLs carry no readable name; callers fall back to alt text.
+      if (text === '' || text.startsWith('blob:') || text.startsWith('data:')) return T.image
       try {
         const url = new URL(text, window.location.href)
         const target = url.searchParams.get('path')
         const candidate = target !== null && target !== '' ? target : url.pathname
         const base = candidate.split(/[\\/]/).filter(Boolean).pop() || T.image
-        return decodeURIComponent(base)
+        try {
+          return decodeURIComponent(base) || T.image
+        } catch {
+          return base
+        }
       } catch {
         const base = text.split(/[?#]/)[0].split(/[\\/]/).filter(Boolean).pop()
         return base === undefined ? T.image : base
@@ -149,6 +159,7 @@ window.__ModuleLoader__.load({
       .${ROOT_CLASS}-btn:hover{background:var(--dsw-alias-interactive-bg-hover,#2631480f)}
       .${ROOT_CLASS}-btn:focus-visible{outline:var(--dsw-focus-ring-width,2px) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary,#4176e6));outline-offset:-2px}
       .${ROOT_CLASS}-btn:disabled{opacity:.45;cursor:default}
+      .${ROOT_CLASS}-btn[hidden]{display:none}
       .${ROOT_CLASS}-btn[data-primary]{background:var(--dsw-alias-state-business-primary,#4176e6);color:#fff}
       .${ROOT_CLASS}-btn[data-primary]:hover{filter:brightness(1.05)}
       .${ROOT_CLASS}-icon{display:block}
@@ -254,26 +265,29 @@ window.__ModuleLoader__.load({
       if (!(img instanceof HTMLImageElement)) return false
       if (img.closest(`.${ROOT_CLASS}`) !== null) return false
       const src = img.currentSrc || img.src || ''
-      if (src === '' || src.startsWith('data:') || src.startsWith('blob:')) return false
+      // Only an empty source is unusable: DSH renders message attachments
+      // (including read_image results) as blob: URLs, and inline data: images
+      // are content too, so both stay eligible here.
+      if (src === '') return false
       // Icons and avatars stay native: only content images are worth a viewer.
+      // Judge by the long edge so thin banner-style content still qualifies.
       const width = img.naturalWidth || img.width || 0
       const height = img.naturalHeight || img.height || 0
-      if (width < 48 || height < 48) return false
+      if (Math.max(width, height) < 48) return false
       const rendered = img.getBoundingClientRect()
       return rendered.width >= 48 || rendered.height >= 48
     }
 
     /** Every viewer-eligible image around the clicked one, for ←/→ browsing. */
     function galleryOf(img) {
-      const scope = img.closest('[data-conversation-scroll]') ?? document.body
-      const seen = new Set()
+      // Stay inside the conversation scrollport: falling back to document.body
+      // would drag sidebar and settings images into the gallery. Nodes are kept
+      // by identity (not by src) so two renders of one image still map back.
+      const scope = img.closest('[data-conversation-scroll]')
+      if (scope === null) return [img]
       const gallery = []
       for (const node of scope.querySelectorAll('img')) {
-        if (!isCandidate(node)) continue
-        const key = node.currentSrc || node.src
-        if (seen.has(key)) continue
-        seen.add(key)
-        gallery.push(node)
+        if (isCandidate(node)) gallery.push(node)
       }
       if (gallery.length === 0) gallery.push(img)
       return gallery
@@ -291,8 +305,8 @@ window.__ModuleLoader__.load({
     }
 
     let viewer = null
-    /** Client context, kept for Host calls (opening a local image in its default app). */
-    let pluginCtx = null
+    /** Client context carrying the remote services, set only when the Host provides them. */
+    let remoteCtx = null
 
     function toast(message) {
       if (viewer === null) return
@@ -324,6 +338,44 @@ window.__ModuleLoader__.load({
       }
     }
 
+    /** Same-origin sources can carry the session cookie; cross-origin ones reject credentialed CORS. */
+    function isSameOrigin(src) {
+      try {
+        return new URL(src, window.location.href).origin === window.location.origin
+      } catch {
+        return false
+      }
+    }
+
+    /** Extension for a downloaded blob, so blob: attachments save under a useful name. */
+    function extensionForType(type) {
+      const known = {
+        'image/png': '.png',
+        'image/jpeg': '.jpg',
+        'image/webp': '.webp',
+        'image/gif': '.gif',
+        'image/svg+xml': '.svg',
+        'image/avif': '.avif',
+        'image/bmp': '.bmp',
+        'image/x-icon': '.ico',
+      }
+      return known[String(type || '').toLowerCase()] ?? ''
+    }
+
+    /** Clean a display name into a safe download name, adding an extension when missing. */
+    function safeFileName(name, type) {
+      const base = String(name || '')
+        .replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_')
+        .trim()
+      const usable = base === '' || base === T.image ? T.image : base
+      return /\.(png|jpe?g|webp|gif|svg|avif|bmp|ico)$/i.test(usable) ? usable : usable + extensionForType(type)
+    }
+
+    /** Fetch one image blob with cookie credentials only where CORS allows them. */
+    async function fetchImage(src, signal) {
+      return await fetch(src, { credentials: isSameOrigin(src) ? 'include' : 'omit', signal })
+    }
+
     /**
      * Open the current image outside the viewer.
      *
@@ -341,7 +393,7 @@ window.__ModuleLoader__.load({
       const path = filePathOf(src)
       let session
       try {
-        session = pluginCtx?.remote?.session
+        session = remoteCtx?.remote?.session
       } catch (error) {
         console.warn('image-viewer-pro: remote session unavailable', error)
       }
@@ -352,7 +404,7 @@ window.__ModuleLoader__.load({
             toast(T.openUnavailable)
             return
           }
-          // The open variant carries no ction; only reveal does.
+          // The open variant carries no action; only reveal does.
           const result = await session.openWorkspacePath({ path })
           if (result?.ok === true) return
           console.warn('image-viewer-pro: host refused to open path', {
@@ -399,6 +451,7 @@ window.__ModuleLoader__.load({
       )
       state.tx = 0
       state.ty = 0
+      state.fitScale = state.scale
       applyTransform()
     }
 
@@ -428,8 +481,14 @@ window.__ModuleLoader__.load({
     }
 
     function rotate() {
-      viewer.state.rotation = (viewer.state.rotation + 90) % 360
-      applyTransform()
+      const { state, img, stage } = viewer
+      const box = stage.getBoundingClientRect()
+      const currentFit = fitScale(img.naturalWidth, img.naturalHeight, box.width - FIT_PADDING * 2, box.height - FIT_PADDING * 2)
+      const wasFit = Math.abs(state.scale - currentFit) < 0.001
+      state.rotation = (state.rotation + 90) % 360
+      // A fitted image must be refitted: rotating swaps its bounding box.
+      if (wasFit) fit()
+      else applyTransform()
     }
 
     function showAt(index) {
@@ -437,25 +496,36 @@ window.__ModuleLoader__.load({
       if (gallery.length === 0) return
       viewer.index = (index + gallery.length) % gallery.length
       const source = gallery[viewer.index]
-      viewer.img.src = source.currentSrc || source.src
+      const src = source.currentSrc || source.src
+      viewer.img.src = src
       viewer.img.alt = source.alt || ''
-      viewer.name = fileNameOf(source.currentSrc || source.src)
+      // Attachment images (blob:) carry no filename in the URL; the official alt
+      // text does, so prefer it over the generic fallback.
+      const alt = String(source.alt || '').trim()
+      viewer.name = alt !== '' && alt !== T.image ? alt : fileNameOf(src)
       // Local files open through the Host in their default app; remote URLs go
-      // to the default browser.
-      const openLabel = isLocalFileSource(viewer.img.src) ? T.openLocal : T.openTab
+      // to the default browser. data: URLs cannot be navigated to as a document.
+      const openLabel = isLocalFileSource(src) ? T.openLocal : T.openTab
       viewer.openBtn.title = openLabel
       viewer.openBtn.setAttribute('aria-label', openLabel)
+      // Blob URLs are denied by the desktop shell's window-open policy and data:
+      // URLs cannot be top-level documents; download/copy cover those sources.
+      viewer.openBtn.hidden = src.startsWith('blob:') || src.startsWith('data:')
       viewer.counter.textContent = gallery.length > 1 ? `${viewer.index + 1} / ${gallery.length}` : ''
       viewer.counter.hidden = gallery.length <= 1
       viewer.nameLabel.textContent = viewer.name
+      viewer.root.setAttribute('aria-label', viewer.name === T.image ? T.title : `${T.title}: ${viewer.name}`)
       viewer.prev.hidden = gallery.length <= 1
       viewer.next.hidden = gallery.length <= 1
       viewer.state.scale = 1
       viewer.state.tx = 0
       viewer.state.ty = 0
       viewer.state.rotation = 0
+      const token = (viewer.loadToken = (viewer.loadToken ?? 0) + 1)
       const ready = () => {
-        if (viewer === null) return
+        // A gallery switch may finish loading the previous source after the next
+        // one is already on screen; only the current load may size the dialog.
+        if (viewer === null || viewer.loadToken !== token) return
         viewer.size.textContent = `${viewer.img.naturalWidth} × ${viewer.img.naturalHeight}`
         fit()
       }
@@ -465,22 +535,31 @@ window.__ModuleLoader__.load({
 
     function close() {
       if (viewer === null) return
-      document.removeEventListener('keydown', viewer.onKey, true)
-      window.removeEventListener('resize', viewer.onResize)
-      viewer.root.remove()
-      document.documentElement.style.removeProperty('overflow')
-      if (viewer.toastTimer) clearTimeout(viewer.toastTimer)
+      const closing = viewer
       viewer = null
+      document.removeEventListener('keydown', closing.onKey, true)
+      window.removeEventListener('resize', closing.onResize)
+      closing.stopRepeatables?.()
+      closing.abort?.abort()
+      closing.root.remove()
+      document.documentElement.style.overflow = closing.previousOverflow
+      if (closing.toastTimer) clearTimeout(closing.toastTimer)
+      // Hand keyboard focus back to whatever opened the viewer.
+      closing.previousFocus?.focus?.({ preventScroll: true })
     }
 
     async function downloadOriginal() {
       if (viewer === null) return
       const button = viewer.download
       const src = viewer.img.src
+      const signal = viewer.abort.signal
+      // Snapshot the name: the gallery may move on while the bytes stream in.
+      const name = viewer.name
       if (button.disabled) return
       button.disabled = true
+      let lastToast = 0
       try {
-        const response = await fetch(src, { credentials: 'include' })
+        const response = await fetchImage(src, signal)
         if (!response.ok) throw new Error(`HTTP ${response.status}`)
         const total = Number(response.headers.get('content-length') || 0)
         const reader = response.body?.getReader?.()
@@ -492,10 +571,15 @@ window.__ModuleLoader__.load({
             if (done) break
             chunks.push(value)
             loaded += value.byteLength
-            // The button is icon-only now, so progress rides the toast.
-            toast(total > 0
-              ? `${T.downloading} ${Math.round((loaded / total) * 100)}%`
-              : `${T.downloading} ${Math.round(loaded / 1024)}K`)
+            // The button is icon-only now, so progress rides the toast; throttle
+            // it so a fast download does not rewrite the live region per chunk.
+            const now = Date.now()
+            if (now - lastToast >= 100) {
+              lastToast = now
+              toast(total > 0
+                ? `${T.downloading} ${Math.round((loaded / total) * 100)}%`
+                : `${T.downloading} ${Math.round(loaded / 1024)}K`)
+            }
           }
         }
         const blob = reader === undefined
@@ -504,15 +588,23 @@ window.__ModuleLoader__.load({
         const url = URL.createObjectURL(blob)
         const anchor = document.createElement('a')
         anchor.href = url
-        anchor.download = viewer.name || fileNameOf(src)
+        anchor.download = safeFileName(name, blob.type)
         document.body.appendChild(anchor)
         anchor.click()
         anchor.remove()
         setTimeout(() => URL.revokeObjectURL(url), 10_000)
         toast(T.downloaded)
       } catch (error) {
+        if (error?.name === 'AbortError') return
         console.warn('image-viewer-pro: download failed', error)
-        toast(T.downloadFailed)
+        // A cross-origin image may refuse fetch (CORS) while the browser can still
+        // display it; open the original in a tab so it can be saved from there.
+        if (!src.startsWith('blob:') && !src.startsWith('data:') && !isSameOrigin(src)) {
+          window.open(src, '_blank', 'noopener,noreferrer')
+          toast(T.downloadFallback)
+        } else {
+          toast(T.downloadFailed)
+        }
       } finally {
         if (viewer !== null) button.disabled = false
       }
@@ -521,14 +613,22 @@ window.__ModuleLoader__.load({
     async function copyImage() {
       if (viewer === null) return
       const src = viewer.img.src
+      const signal = viewer.abort.signal
       try {
-        const blob = await (await fetch(src, { credentials: 'include' })).blob()
+        const blob = await (await fetchImage(src, signal)).blob()
         const png = blob.type === 'image/png' ? blob : await toPng(blob)
         await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })])
         toast(T.copied)
       } catch (error) {
+        if (error?.name === 'AbortError') return
         console.warn('image-viewer-pro: copy failed', error)
-        toast(T.copyFailed)
+        // A cross-origin image may refuse fetch; copy its URL instead.
+        try {
+          await navigator.clipboard.writeText(src)
+          toast(T.copyLink)
+        } catch {
+          toast(T.copyFailed)
+        }
       }
     }
 
@@ -544,6 +644,8 @@ window.__ModuleLoader__.load({
 
     function mount(image) {
       close()
+      const previousOverflow = document.documentElement.style.overflow
+      const previousFocus = document.activeElement
       const gallery = galleryOf(image)
       const index = Math.max(0, gallery.indexOf(image))
 
@@ -551,6 +653,8 @@ window.__ModuleLoader__.load({
       if (style === null) {
         const tag = document.createElement('style')
         tag.id = STYLE_ID
+        // The client module loader drops owned styles by this attribute on unload.
+        tag.dataset.plugin = 'dsh-image-viewer-pro'
         tag.dataset.pluginCss = STYLE_ID
         tag.textContent = CSS
         document.head.appendChild(tag)
@@ -578,7 +682,7 @@ window.__ModuleLoader__.load({
         spellcheck: 'false',
         autocomplete: 'off',
       })
-      const counter = el('span')
+      const counter = el('span', { 'aria-live': 'polite' })
       const toastNode = el('div', { class: `${ROOT_CLASS}-toast`, role: 'status' })
 
       // Icon-only controls: the label lives in title/aria, the face is a glyph.
@@ -593,6 +697,9 @@ window.__ModuleLoader__.load({
         return node
       }
 
+      /** Timers of the press-and-hold controls, cleared when the dialog closes. */
+      const repeatStops = []
+
       /** Press-and-hold repeat: one full step now, gentler steps while held. */
       const repeatable = (node, onPress, onRepeat) => {
         let delay = null
@@ -603,6 +710,7 @@ window.__ModuleLoader__.load({
           delay = null
           timer = null
         }
+        repeatStops.push(stop)
         node.addEventListener('pointerdown', event => {
           if (event.button !== 0) return
           event.preventDefault()
@@ -632,20 +740,24 @@ window.__ModuleLoader__.load({
       const openBtn = button('open', T.openTab, () => { void openExternally(img.src) })
       const closeBtn = button('close', T.close, () => close())
 
-      // Editable zoom: Enter/blur applies, Escape reverts.
+      // Editable zoom: Enter/blur applies; Escape is handled by the document
+      // capture handler, which flags the blur as a cancel before it happens.
       zoomInput.addEventListener('focus', () => zoomInput.select())
       zoomInput.addEventListener('keydown', event => {
-        if (event.key === 'Enter') {
-          event.preventDefault()
-          setZoomPercent(zoomInput.value)
-          zoomInput.blur()
-        } else if (event.key === 'Escape') {
-          event.preventDefault()
-          zoomInput.value = percentOf(viewer.state.scale)
-          zoomInput.blur()
-        }
+        if (event.key !== 'Enter') return
+        event.preventDefault()
+        setZoomPercent(zoomInput.value)
+        zoomInput.blur()
       })
-      zoomInput.addEventListener('blur', () => setZoomPercent(zoomInput.value))
+      zoomInput.addEventListener('blur', () => {
+        if (viewer === null) return
+        if (viewer.zoomCancelled) {
+          viewer.zoomCancelled = false
+          zoomInput.value = percentOf(viewer.state.scale)
+          return
+        }
+        setZoomPercent(zoomInput.value)
+      })
 
       // Dialog chrome: a title row (file name, dimensions, and the window-level
       // actions: open externally and close) above the image, plus one
@@ -678,16 +790,20 @@ window.__ModuleLoader__.load({
         prev, next, openBtn,
         download: downloadBtn,
         gallery, index, name: '',
-        state: { scale: 1, tx: 0, ty: 0, rotation: 0 },
+        state: { scale: 1, tx: 0, ty: 0, rotation: 0, fitScale: 1 },
         onKey: undefined, onResize: undefined, toastTimer: undefined,
+        loadToken: 0, previousOverflow, previousFocus,
+        abort: new AbortController(), zoomCancelled: false,
+        stopRepeatables: () => { for (const stop of repeatStops) stop() },
       }
 
       backdrop.addEventListener('click', () => close())
       prev.addEventListener('click', event => { event.stopPropagation(); showAt(viewer.index - 1) })
       next.addEventListener('click', event => { event.stopPropagation(); showAt(viewer.index + 1) })
 
-      // Wheel zooms around the pointer; ctrl+wheel stays a browser zoom fallback.
+      // Wheel zooms around the pointer; ctrl/meta+wheel stays browser zoom.
       stage.addEventListener('wheel', event => {
+        if (event.ctrlKey || event.metaKey || event.deltaY === 0) return
         event.preventDefault()
         step(event.deltaY < 0 ? 1 : -1, { x: event.clientX, y: event.clientY })
       }, { passive: false })
@@ -730,10 +846,30 @@ window.__ModuleLoader__.load({
       })
 
       viewer.onKey = event => {
+        // Keep keyboard focus inside the modal: Tab cycles its own controls.
+        if (event.key === 'Tab') {
+          const nodes = [...viewer.root.querySelectorAll('button:not([hidden]):not(:disabled), input:not([hidden])')]
+          if (nodes.length > 0) {
+            const first = nodes[0]
+            const last = nodes[nodes.length - 1]
+            if (event.shiftKey && document.activeElement === first) {
+              event.preventDefault()
+              last.focus()
+            } else if (!event.shiftKey && document.activeElement === last) {
+              event.preventDefault()
+              first.focus()
+            } else if (!viewer.root.contains(document.activeElement)) {
+              event.preventDefault()
+              first.focus()
+            }
+          }
+          return
+        }
         // Typing inside the percentage field owns its keys.
         if (event.target === zoomInput) {
           if (event.key === 'Escape') {
             event.preventDefault()
+            viewer.zoomCancelled = true
             zoomInput.blur()
           }
           return
@@ -747,13 +883,19 @@ window.__ModuleLoader__.load({
         if (event.key === 'ArrowLeft') { event.preventDefault(); showAt(viewer.index - 1); return }
         if (event.key === 'ArrowRight') { event.preventDefault(); showAt(viewer.index + 1) }
       }
-      viewer.onResize = () => { if (viewer !== null && Math.abs(viewer.state.scale) > 0) fit() }
+      viewer.onResize = () => {
+        if (viewer === null) return
+        // Re-fit only a fitted image; a user-chosen zoom survives a resize.
+        if (Math.abs(viewer.state.scale - viewer.state.fitScale) < 0.001) fit()
+      }
 
       document.documentElement.style.overflow = 'hidden'
       document.body.appendChild(root)
       document.addEventListener('keydown', viewer.onKey, true)
       window.addEventListener('resize', viewer.onResize)
       showAt(index)
+      // Focus lands inside the dialog; close() hands it back to the invoking control.
+      closeBtn.focus({ preventScroll: true })
       // Re-fit once the dialog has its settled layout: the first fit may run
       // while the panel is still being laid out, and a wrong box would leave
       // the image under-sized.
@@ -767,9 +909,13 @@ window.__ModuleLoader__.load({
     function onClick(event) {
       if (viewer !== null) return
       if (event.defaultPrevented || event.button !== 0) return
+      // Modified and secondary clicks keep their native meaning.
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
       const target = event.target
       const img = target instanceof Element ? target.closest('img') : null
       if (img === null || !isCandidate(img)) return
+      // A Markdown link may wrap an image; navigation should win there.
+      if (img.closest('a[href]') !== null) return
       event.preventDefault()
       event.stopPropagation()
       mount(img)
@@ -791,20 +937,27 @@ window.__ModuleLoader__.load({
     }
 
     return {
-      // The Host path opener lives on the remote session namespace, so the plugin
-      // must declare that injected path — an undeclared accessor throws.
-      inject: ['remote', 'remote.session'],
       apply(ctx) {
-        pluginCtx = ctx
         install()
+        // Only "open with the default app" needs the Host; request the remote
+        // services lazily so a Host without them still gets the viewer instead
+        // of an inactive plugin.
+        if (typeof ctx?.inject === 'function') {
+          ctx.inject(['remote', 'remote.session'], (scoped) => {
+            remoteCtx = scoped
+            return () => {
+              if (remoteCtx === scoped) remoteCtx = null
+            }
+          })
+        }
         if (typeof ctx?.effect === 'function') {
           ctx.effect(() => () => {
-            pluginCtx = null
+            remoteCtx = null
             uninstall()
           })
         }
       },
-      __test: { clamp, fitScale, fileNameOf, percentOf, isCandidate: String(isCandidate) !== '' },
+      __test: { clamp, fitScale, fileNameOf, percentOf },
     }
   },
 })

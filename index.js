@@ -6,7 +6,7 @@
  * lightbox. The Host row exists only so the package is a Loader entry whose
  * `dsh.client` declaration the Web boot graph can scan.
  *
- * @module @local/dsh-image-viewer-pro
+ * @module dsh-image-viewer-pro
  */
 
 /** Nothing to install on the Host. */

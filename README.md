@@ -14,6 +14,8 @@ English | [中文](README.zh.md)
 
 The stock image preview in DSH 0.2.1-rc.2 only offers **Close**: no zoom, no pan, no rotate, no download, no switching between the images of one conversation. This plugin takes over content-image clicks in the **capture phase** and renders its own dialog — it does not depend on official slot contracts, so it stays working when image slots change.
 
+The viewer improves *looking*; it cannot make an image appear. See [Getting images into the conversation](#getting-images-into-the-conversation) for prompt rules that get an agent to inline images in the first place.
+
 ## Features
 
 - **Zoom** — wheel zooms around the pointer; the footer shows `− [percent] +` and the percentage is editable (Enter applies, Esc reverts); press and hold ± to keep zooming.
@@ -36,6 +38,43 @@ The stock image preview in DSH 0.2.1-rc.2 only offers **Close**: no zoom, no pan
 | Images inside the plugin's own dialog (recursion guard) | ❌ |
 
 Only the click behaviour is intercepted: message content is not modified, no session data is written, and the page returns to normal after closing the dialog.
+
+## Getting images into the conversation
+
+The viewer only improves *looking*. Whether an image appears at all is decided by what the agent emits: DSH renders Markdown images from the reply and image attachments from tool results, and this plugin takes over the click afterwards. Most agents summarise UI work in text ("the layout looks correct") and never inline a single picture — which is why the feature is easy to overlook.
+
+Add the rules below to your global `AGENTS.md`, a project `AGENTS.md`, or the custom-instructions field. They are deliberately imperative: "inline every image" steers a model far more reliably than "you may attach screenshots".
+
+**Images always inline**
+
+```markdown
+## Images
+
+- Any image you produce, find, or refer to (including screenshots) must be shown inline: `![description](<D:/absolute/path.png>)`.
+- Show it without being asked. Never reply with only a file path or only a `present` file card — the image is part of the reply.
+- Use an absolute path with forward slashes and wrap the destination in angle brackets. A relative path only resolves when the viewed session has a workspace root; otherwise it renders as a broken image.
+- Download remote images into the workspace first, then inline the local file.
+- Inline images only. Code, documents and spreadsheets follow the delivery rules of their own tools.
+```
+
+**UI verification ends with a screenshot**
+
+```markdown
+## UI verification and screenshots
+
+- Verify UI and interaction questions in a real session: open → snapshot/screenshot → operate → check Console/Network. Do not substitute reading source code or reasoning for verification.
+- At the end of the verification, inline the key screenshots in the reply and state which step each one shows. Do not paste only paths.
+- Save screenshots into the workspace and inline them with `![description](<D:/absolute/path.png>)`.
+- Write local origins (`127.0.0.1`, `localhost`, any port) as inline code, never as clickable links, and note "open it in your system browser".
+```
+
+Why these constraints:
+
+- DSH serves inline local images through an authenticated file route (`GET /api/file?path=<absolute path>`, mounted by its session media references). It accepts POSIX absolute paths and Windows drive-letter paths; DSH's own docs note that this route needs an HTTP(S) page, so desktop `dsh-app:` pages do not support it.
+- Relative chat image paths only resolve when the viewed session has a workspace root, so absolute paths are the portable choice.
+- Tool-result images (`read_image`, browser screenshots) already arrive as rendered attachments and are picked up as-is; the agent should still caption them instead of letting the picture speak for itself.
+
+A quick way to test the whole chain: ask "screenshot it and inline it" for a page you can see. If the reply shows an image, click it — the viewer opens. If no image appears, check in order: Markdown syntax versus a bare path, an absolute path with forward slashes, and whether the file actually exists.
 
 ## Shortcuts
 

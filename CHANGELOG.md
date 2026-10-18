@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- README 新增「让智能体真的发图：提示词建议」：把 `AGENTS.md` 里「图片一律内联」「界面验证以截图收尾」这类提示词整理成中英双语、可直接粘贴的片段，并补充 DSH 鉴权文件路由（`/api/file?path=`）、绝对路径要求与桌面端限制，说明为什么默认智能体不会发图、插件在什么条件下才被触发。中英两份 README 同步。
 - 对齐官方插件基线：`dsh.manifestVersion: 1`；`engines.dsh` 保持 `>=0.2.1-rc.2 <0.3.0-0`，新增 `engines.node: >=22.19.0`；补 `publishConfig`，并在 `files` 中纳入 README、LICENSE、CHANGELOG、SECURITY。
 - README 语言规范修正：英文为 `README.md`、中文为 `README.zh.md`，切换链接与冒烟测试列表同步更新；两份 README 的规范对齐表补 `manifestVersion`、DSH 与 Node engines 行。
 - 新增 `SECURITY.md`：报告渠道、支持版本、权限边界与第三方数据说明。

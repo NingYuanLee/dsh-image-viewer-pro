@@ -128,7 +128,7 @@ async function main() {
     const patch = fs.readFileSync(path.join(root, 'cordis.patch.yml'), 'utf8')
     assert.ok(patch.includes('insert:'))
     assert.ok(patch.includes("name: 'dsh-image-viewer-pro'"))
-    assert.ok(/id:\s*image-viewer-pro/.test(patch))
+    assert.ok(/id:\s*dsh-image-viewer-pro/.test(patch))
   })
 
   // 9. Storefront screenshots: 1-8 relative paths that stay inside the repo.

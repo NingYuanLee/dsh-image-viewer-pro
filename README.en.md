@@ -4,6 +4,10 @@ A usable image viewer for DeepSeek Harness.
 
 The stock preview only offers a close button. This plugin takes over every content image the chat renders (Markdown images, attachments, `read_image` results) and opens a dialog with zoom, pan, rotate, download, copy and gallery browsing.
 
+![Preview](docs/preview.png)
+
+![Toolbar](docs/toolbar.png)
+
 ## Features
 
 - **Zoom** — wheel zooms around the pointer; the footer shows `− [percent] +`, and the percentage is editable (Enter applies, Esc reverts). Press and hold ± to keep zooming.

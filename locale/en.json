@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Image Viewer Pro",
-    "description": "Replaces the bare in-chat image preview: pointer-centered wheel zoom, drag to pan, double-click fit/actual, 1:1, rotate, download original with progress, copy image, open in a tab, and ←/→ browsing."
+    "description": "Replaces the bare in-chat image preview: pointer-centered wheel zoom, drag to pan, double-click fit/actual, 1:1, rotate, download original with progress, copy image, open with the default app, and ←/→ browsing."
   }
 }

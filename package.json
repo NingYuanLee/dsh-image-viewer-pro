@@ -1,8 +1,9 @@
 {
   "name": "dsh-image-viewer-pro",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A proper image viewer for DeepSeek Harness: zoom, pan, rotate, download, copy and gallery browsing for every image the chat renders.",
   "type": "module",
+  "main": "index.js",
   "license": "MIT",
   "author": "NingYuanLee <liyunningyuan@outlook.com>",
   "homepage": "https://github.com/NingYuanLee/dsh-image-viewer-pro#readme",
@@ -21,15 +22,21 @@
     "lightbox",
     "zoom"
   ],
+  "engines": {
+    "dsh": ">=0.2.1-rc.2 <0.3.0"
+  },
+  "icon": "./icon.svg",
   "exports": {
     ".": "./index.js",
     "./client": "./client.js",
+    "./package.json": "./package.json",
     "./locale/*.json": "./locale/*.json"
   },
   "files": [
     "index.js",
     "client.js",
     "cordis.patch.yml",
+    "icon.svg",
     "locale/*.json"
   ],
   "scripts": {

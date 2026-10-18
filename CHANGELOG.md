@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.1
+
+对齐 DSH 官方清单与 Web 样式规范：
+
+- `package.json` 增加 `engines.dsh`（`>=0.2.1-rc.2 <0.3.0`）、`main`、`icon`、`exports["./package.json"]`，`files` 带上图标。
+- 新增 `icon.svg`，插件卡片/详情可显示图标（需重启后由 Host 读取清单）。
+- Web 样式合规：弹窗与侧翻页按钮改为 `border: 0` + `box-shadow: var(--dsw-elevation-panel)`（不再把中性 border 与 elevation 投影配对）；正圆补 `corner-shape: round`；缩放输入框改用 `--dsw-elevation-soft` 聚焦态；12px 文案补行高；新增 `prefers-reduced-motion` 降级。
+- locale 描述同步「用默认应用打开」的现行为。
+
 ## 0.1.0
 
 首个公开版本。

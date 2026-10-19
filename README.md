@@ -10,6 +10,47 @@ English | [中文](README.zh.md)
 
 ![Viewer preview](docs/preview.png)
 
+
+## See it
+
+The pictures below are the real viewer, opened on photographs made for this page. The GIF plays on GitHub; the MP4 link is the same take.
+
+<p>
+<img src="docs/zoom.png" width="32%" alt="Zoomed in on a wing">
+<img src="docs/rotate.png" width="32%" alt="Still life rotated 90 degrees">
+<img src="docs/gallery.png" width="32%" alt="Third image in the gallery">
+</p>
+
+**Zoom and pan.** The wheel zooms around the pointer; dragging moves the picture.
+
+![Zoom and pan](docs/zoom.gif)
+
+[zoom.mp4](docs/zoom.mp4)
+
+**Rotate.** Each click turns 90°. The footer shows the angle.
+
+![Rotate](docs/rotate.gif)
+
+[rotate.mp4](docs/rotate.mp4)
+
+**Gallery.** The side arrows and `←` / `→` move through the images in the conversation. The new picture slides in from that side.
+
+![Gallery](docs/gallery.gif)
+
+[gallery.mp4](docs/gallery.mp4)
+
+**Move the dialog.** Drag the title bar. The window stays inside the backdrop.
+
+![Move the dialog](docs/move.gif)
+
+[move.mp4](docs/move.mp4)
+
+**Copy and download.** Copy writes a PNG and shows a toast; download saves the original.
+
+![Copy and download](docs/actions.gif)
+
+[actions.mp4](docs/actions.mp4)
+
 ## Why
 
 The stock image preview in DSH 0.2.1-rc.2 only offers **Close**: no zoom, no pan, no rotate, no download, no switching between the images of one conversation. This plugin takes over content-image clicks in the **capture phase** and renders its own dialog — it does not depend on official slot contracts, so it stays working when image slots change.
@@ -26,7 +67,7 @@ The viewer improves *looking*; it cannot make an image appear. See [Getting imag
 - **Rotate** — counterclockwise on the left, clockwise on the right, 90° per click, with the current angle centered between them.
 - **Download original** — with progress; saves to the system downloads folder.
 - **Copy image** — writes a PNG to the clipboard.
-- **Gallery** — browse the other images in the same conversation with the round side arrows or `←` / `→`; shows `current / total`.
+- **Gallery** — browse the other images in the same conversation with the round side arrows or `←` / `→`; shows `current / total`. The incoming picture pushes in from the side you asked for and the previous one leaves the other way, about 420ms on the same curve as the dialog open. A second step settles the one already playing. Reduced motion still cuts straight across.
 - **Open** — a local file uses a split button. The main face shows the default app's icon and opens the file with that app; the menu lists every associated app reported by `session.workspacePathApplications` (the default is marked) and ends with "Show file location". A remote `http(s)` image stays a new-tab button. `blob:` and `data:` sources hide it. Opening and revealing both go through the Host's `session.openWorkspacePath`.
 - **Native look** — the backdrop covers the window content area (the app's own top toolbar included) but stops below the desktop frame's native title/menu bar on Windows (`--dsh-frame-chrome-top`), and the dialog moves only inside that area; both use DSH theme tokens, follow light/dark, and honour `prefers-reduced-motion`.
 

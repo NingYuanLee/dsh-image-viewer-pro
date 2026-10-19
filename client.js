@@ -364,7 +364,8 @@ window.__ModuleLoader__.load({
       .${ROOT_CLASS}-stage[data-panning]{cursor:grabbing}
       /* Out of flow so a multi-megapixel bitmap cannot stretch the dialog's layout.
          Hit-testing the transformed bitmap is skipped; the stage handles the gestures. */
-      .${ROOT_CLASS}-img{position:absolute;left:50%;top:50%;width:max-content;height:max-content;max-width:none;max-height:none;margin:0;will-change:transform;border-radius:4px;box-shadow:var(--dsw-elevation-panel,0 0 0 .5px #00000029,0 3px 8px #00000008);background:var(--dsw-alias-bg-base,#fff);transform-origin:center center;transform:translate3d(0,0,0) translate(-50%,-50%);-webkit-user-drag:none;pointer-events:none;backface-visibility:hidden}
+      .${ROOT_CLASS}-img{position:absolute;left:50%;top:50%;z-index:2;width:max-content;height:max-content;max-width:none;max-height:none;margin:0;will-change:transform,opacity;border-radius:4px;box-shadow:var(--dsw-elevation-panel,0 0 0 .5px #00000029,0 3px 8px #00000008);background:var(--dsw-alias-bg-base,#fff);transform-origin:center center;transform:translate3d(0,0,0) translate(-50%,-50%);-webkit-user-drag:none;pointer-events:none;backface-visibility:hidden}
+      .${ROOT_CLASS}-page{position:absolute;inset:0;z-index:1;pointer-events:none;will-change:transform,opacity}
       .${ROOT_CLASS}-toolbar{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:6px;flex:none;padding:8px 10px;border-top:.5px solid var(--dsw-alias-border-l3,#0000001f);background:var(--dsw-alias-bg-base,#fff)}
       .${ROOT_CLASS}-left{display:flex;align-items:center;gap:6px}
       .${ROOT_CLASS}-center{display:flex;align-items:center;gap:6px;justify-self:center}
@@ -407,7 +408,7 @@ window.__ModuleLoader__.load({
       .${ROOT_CLASS}-icon{display:block}
       /* Side paging arrows sit on top of the moving image. A backdrop blur here
          would be resampled on every pan/zoom frame, so the fill stays opaque. */
-      .${ROOT_CLASS}-nav{position:absolute;top:50%;transform:translateY(-50%);width:36px;height:36px;display:flex;align-items:center;justify-content:center;padding:0;border:0;border-radius:50%;corner-shape:round;background:var(--dsw-specific-menu,#f8f9fa);box-shadow:var(--dsw-elevation-panel);color:var(--dsw-alias-label-primary);cursor:pointer;opacity:.8;transition:opacity .08s ease,background-color .08s ease}
+      .${ROOT_CLASS}-nav{position:absolute;top:50%;z-index:3;transform:translateY(-50%);width:36px;height:36px;display:flex;align-items:center;justify-content:center;padding:0;border:0;border-radius:50%;corner-shape:round;background:var(--dsw-specific-menu,#f8f9fa);box-shadow:var(--dsw-elevation-panel);color:var(--dsw-alias-label-primary);cursor:pointer;opacity:.8;transition:opacity .08s ease,background-color .08s ease}
       .${ROOT_CLASS}-nav:hover,.${ROOT_CLASS}-nav:focus-visible{opacity:1;background:var(--dsw-alias-bg-base,#fff)}
       .${ROOT_CLASS}-nav:focus-visible{outline:var(--dsw-focus-ring-width,2px) solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary,#4176e6));outline-offset:1px}
       .${ROOT_CLASS}-nav[data-side=left]{left:12px}
@@ -419,7 +420,7 @@ window.__ModuleLoader__.load({
         .${ROOT_CLASS}-panel,.${ROOT_CLASS}-backdrop,
         .${ROOT_CLASS}[data-state=closing] .${ROOT_CLASS}-panel,
         .${ROOT_CLASS}[data-state=closing] .${ROOT_CLASS}-backdrop{animation:none}
-        .${ROOT_CLASS}-nav,.${ROOT_CLASS}-toast,.${ROOT_CLASS}-img{transition:none}
+        .${ROOT_CLASS}-nav,.${ROOT_CLASS}-toast,.${ROOT_CLASS}-img,.${ROOT_CLASS}-page{transition:none}
       }
     `
 
@@ -587,13 +588,34 @@ window.__ModuleLoader__.load({
     let resizeQueued = false
     let metaQueued = false
 
+    /**
+     * Flash a status on the shared toast node. The hide timer lives on the node,
+     * not the viewer record: the dialog DOM is reused across opens, and tearing
+     * one viewer down must not cancel a toast a newer viewer already armed.
+     * Close and reopen both dismiss a leftover message. Otherwise `data-visible`
+     * survives the cancelled timer and the next open shows it forever.
+     */
     function toast(message) {
       if (viewer === null) return
       const node = viewer.toast
+      const token = (node._toastToken = (node._toastToken ?? 0) + 1)
       node.textContent = message
       node.setAttribute('data-visible', '')
-      clearTimeout(viewer.toastTimer)
-      viewer.toastTimer = setTimeout(() => node.removeAttribute('data-visible'), 1600)
+      clearTimeout(node._toastTimer)
+      node._toastTimer = setTimeout(() => {
+        if (node._toastToken !== token) return
+        node.removeAttribute('data-visible')
+      }, 1600)
+    }
+
+    /** Drop a toast immediately, including one left visible by a cancelled timer. */
+    function dismissToast(node) {
+      if (node == null) return
+      node._toastToken = (node._toastToken ?? 0) + 1
+      clearTimeout(node._toastTimer)
+      node._toastTimer = undefined
+      node.textContent = ''
+      node.removeAttribute('data-visible')
     }
 
     /** Whether one source is this Host's own file route (not a remote URL). */
@@ -952,6 +974,85 @@ window.__ModuleLoader__.load({
       if (viewer.motionTimer !== undefined) clearTimeout(viewer.motionTimer)
       viewer.motionTimer = undefined
       viewer.img.style.transition = ''
+      dropPageLayer()
+    }
+
+    /** Drop a gallery slide that is still moving, and show the live picture at rest. */
+    function dropPageLayer() {
+      if (viewer === null) return
+      if (viewer.pageTimer !== undefined) clearTimeout(viewer.pageTimer)
+      viewer.pageTimer = undefined
+      viewer.pageLayer?.remove()
+      viewer.pageLayer = null
+      viewer.img.style.opacity = ''
+    }
+
+    /**
+     * Which way a gallery step travels. +1 is the next picture (in from the
+     * right); −1 is the previous one. Callers pass an unwrapped index, so a
+     * step off either end still points the way the arrow does.
+     */
+    function pageDirection(from, requested, count) {
+      if (count < 2) return 0
+      const to = (requested % count + count) % count
+      if (!Number.isFinite(to) || to === from) return 0
+      const raw = requested - from
+      if (raw === 1 || raw === 1 - count) return 1
+      if (raw === -1 || raw === count - 1) return -1
+      const forward = (to - from + count) % count
+      return forward * 2 <= count ? 1 : -1
+    }
+
+    /** Keep the picture that is on screen, so the next one can slide in over it. */
+    function liftOutgoing() {
+      dropPageLayer()
+      const layer = document.createElement('div')
+      layer.className = `${ROOT_CLASS}-page`
+      const ghost = viewer.img.cloneNode(true)
+      ghost.alt = ''
+      layer.append(ghost)
+      viewer.stage.insertBefore(layer, viewer.stage.firstChild)
+      viewer.pageLayer = layer
+      return layer
+    }
+
+    /**
+     * Push the new picture in from `direction` and the previous one out the
+     * other way. They stay opaque and travel most of the stage, so the change
+     * reads as a slide instead of two pictures dissolving on top of each other.
+     * The curve matches the dialog open.
+     */
+    function startPageSlide(direction, layer) {
+      const box = stageBox()
+      const travel = Math.round(box.width * 0.72) * direction
+      const { state, img } = viewer
+      img.style.transition = 'none'
+      img.style.opacity = '1'
+      img.style.transform = `translate3d(${state.tx + travel}px, ${state.ty}px, 0) translate(-50%, -50%) scale(${state.scale}) rotate(${state.rotation}deg)`
+      if (layer !== null) {
+        layer.style.transition = 'none'
+        layer.style.opacity = '1'
+        layer.style.transform = 'translate3d(0,0,0)'
+      }
+      // The offset has to be painted before the transition, or the slide is skipped.
+      void img.offsetWidth
+      const curve = 'cubic-bezier(0.32, 0.72, 0, 1)'
+      img.style.transition = `transform .42s ${curve}`
+      applyTransform()
+      if (layer !== null) {
+        layer.style.transition = `transform .42s ${curve}`
+        layer.style.transform = `translate3d(${-travel}px,0,0)`
+      }
+      const token = viewer.loadToken
+      viewer.pageTimer = setTimeout(() => {
+        if (viewer === null || viewer.loadToken !== token) return
+        viewer.img.style.transition = ''
+        if (viewer.pageLayer === layer) {
+          layer?.remove()
+          viewer.pageLayer = null
+        }
+        viewer.pageTimer = undefined
+      }, 460)
     }
 
     function actualSize() {
@@ -1012,6 +1113,9 @@ window.__ModuleLoader__.load({
     function rotate(direction = 1) {
       if (viewer === null || viewer.closing) return
       cancelZoomGlide()
+      // A page slide owns the picture's transform. Drop it before a quarter-turn,
+      // or the two transitions fight over the same element.
+      dropPageLayer()
       const { state, img } = viewer
       const box = rememberStage(viewer.stage.getBoundingClientRect())
       const turned = Math.abs(state.rotation % 180) === 90
@@ -1162,30 +1266,49 @@ window.__ModuleLoader__.load({
       if (viewer === null || viewer.loadToken !== token) return
       const width = probe.naturalWidth
       const height = probe.naturalHeight
+      const direction = viewer.pageDirection || 0
+      viewer.pageDirection = 0
       if (!width || !height) {
         if (!sameSrc(viewer.img, src)) viewer.img.src = src
         viewer.img.style.visibility = ''
         return
       }
-      viewer.size.textContent = `${width} × ${height}`
+      // A second click settles the slide that is already playing, then snapshots
+      // that resting picture. The new one is fitted while invisible, so the
+      // slide never shows it at the wrong size.
       cutTransformMotion()
+      const animate = direction !== 0
+        && prefersReducedMotion() !== true
+        && viewer.root.isConnected
+        && viewer.img.getAttribute('src')
+        && sameSrc(viewer.img, src) !== true
+      const layer = animate ? liftOutgoing() : null
+      viewer.size.textContent = `${width} × ${height}`
       viewer.state.rotation = 0
       syncRotationLabel()
       if (!viewer.root.isConnected) {
+        layer?.remove()
+        if (viewer.pageLayer === layer) viewer.pageLayer = null
         if (!sameSrc(viewer.img, src)) viewer.img.src = src
         viewer.img.style.visibility = 'hidden'
         viewer.deferFit = { width, height }
         return
       }
+      if (animate) {
+        viewer.img.style.transition = 'none'
+        viewer.img.style.opacity = '0'
+      }
       fitBox(width, height)
       if (!sameSrc(viewer.img, src)) viewer.img.src = src
       viewer.img.style.visibility = ''
+      if (animate) startPageSlide(direction, layer)
       preloadAround()
     }
 
     function showAt(index) {
       const gallery = viewer.gallery
       if (gallery.length === 0) return
+      viewer.pageDirection = pageDirection(viewer.index, index, gallery.length)
       viewer.index = (index + gallery.length) % gallery.length
       const source = gallery[viewer.index]
       const src = source.currentSrc || source.src
@@ -1256,13 +1379,20 @@ window.__ModuleLoader__.load({
     function teardown(closing) {
       if (closing.tornDown) return
       closing.tornDown = true
-      if (viewer === closing) viewer = null
+      // A newer present() may already own this dialog. Only the viewer that is
+      // actually going away may clear the shared toast.
+      const ownsDialog = viewer === closing
+      if (ownsDialog) viewer = null
       clearTimeout(closing.closeTimer)
+      clearTimeout(closing.pageTimer)
       document.removeEventListener('keydown', closing.onKey, true)
       window.removeEventListener('resize', closing.onResize)
       closing.abort?.abort()
       delete closing.root.dataset.state
       closing.img.style.transition = ''
+      closing.img.style.opacity = ''
+      closing.pageLayer?.remove()
+      closing.pageLayer = null
       // Drop decoded bitmaps once the dialog is gone. The chat thumbnails keep
       // their own copies; this viewer must not pin extra full-size images.
       releaseImage(closing.img)
@@ -1270,7 +1400,7 @@ window.__ModuleLoader__.load({
       // Detach only. The node tree stays on shell and is reattached next open.
       closing.root.remove()
       document.documentElement.style.overflow = closing.previousOverflow
-      if (closing.toastTimer) clearTimeout(closing.toastTimer)
+      if (ownsDialog) dismissToast(closing.toast)
       closing.previousFocus?.focus?.({ preventScroll: true })
     }
 
@@ -1418,11 +1548,16 @@ window.__ModuleLoader__.load({
     /** Reattach the dialog built on the first open. Skipping the DOM rebuild is the open/close win. */
     function present(image) {
       const ui = shell
+      // The shell keeps its last toast. A copy that was closed before the hide
+      // timer fired would otherwise come back and stay.
+      dismissToast(ui.toast)
       const previousOverflow = document.documentElement.style.overflow
       const previousFocus = document.activeElement
       resetPanelPosition(ui.panel)
       delete ui.root.dataset.state
       ui.img.style.transition = ''
+      ui.img.style.opacity = ''
+      ui.stage.querySelectorAll(`.${ROOT_CLASS}-page`).forEach((node) => node.remove())
       ui.stage.removeAttribute('data-panning')
       ui.download.disabled = false
       ui.img.style.visibility = 'hidden'
@@ -1440,7 +1575,7 @@ window.__ModuleLoader__.load({
         format: '', bytes: undefined, metaToken: 0, metaAbort: undefined,
         gallery: [image], index: 0, name: '',
         state: { scale: 1, tx: 0, ty: 0, rotation: 0, fitScale: 1 },
-        onKey: ui.onKey, onResize: ui.onResize, toastTimer: undefined,
+        onKey: ui.onKey, onResize: ui.onResize,
         loadToken: 0, previousOverflow, previousFocus,
         abort: new AbortController(), zoomCancelled: false,
         openToken: 0, openState: null,
@@ -1688,7 +1823,7 @@ window.__ModuleLoader__.load({
         format: '', bytes: undefined, metaToken: 0, metaAbort: undefined,
         gallery, index, name: '',
         state: { scale: 1, tx: 0, ty: 0, rotation: 0, fitScale: 1 },
-        onKey: undefined, onResize: undefined, toastTimer: undefined,
+        onKey: undefined, onResize: undefined,
         loadToken: 0, previousOverflow, previousFocus,
         abort: new AbortController(), zoomCancelled: false,
         openToken: 0, openState: null,
@@ -2028,7 +2163,7 @@ window.__ModuleLoader__.load({
           })
         }
       },
-      __test: { clamp, clampPanelPosition, fitScale, fileNameOf, percentOf, formatBytes, formatOf },
+      __test: { clamp, clampPanelPosition, fitScale, fileNameOf, percentOf, formatBytes, formatOf, pageDirection },
     }
   },
 })

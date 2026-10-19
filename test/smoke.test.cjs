@@ -46,7 +46,7 @@ async function main() {
   // Load the ESM bundle through import() so Node 20 (no require(esm)) works too;
   // the bundle registers itself against the stubbed __ModuleLoader__ on load.
   await import(pathToFileURL(path.join(root, 'client.js')).href)
-  ;({ clamp, clampPanelPosition, fitScale, fileNameOf, percentOf, formatBytes, formatOf } = bundle.__test)
+  ;({ clamp, clampPanelPosition, fitScale, fileNameOf, percentOf, formatBytes, formatOf, pageDirection } = bundle.__test)
 
   // 0. Registration id must be the package name: the boot graph keys every row
   //    by package name (`window.__DSH_BOOT__.entries[].id`), and the loader only
@@ -104,6 +104,16 @@ async function main() {
     assert.strictEqual(formatOf('https://example.com/pic.jpeg'), 'JPG')
     assert.strictEqual(formatOf('https://example.com/no-extension'), '')
     assert.strictEqual(formatOf('blob:http://127.0.0.1/abc'), '')
+  })
+
+  // 2d. Gallery paging travels with the arrow, including the wrap off either end.
+  check('gallery page direction', () => {
+    assert.strictEqual(pageDirection(0, 1, 4), 1)
+    assert.strictEqual(pageDirection(3, 4, 4), 1)
+    assert.strictEqual(pageDirection(0, -1, 4), -1)
+    assert.strictEqual(pageDirection(2, 1, 4), -1)
+    assert.strictEqual(pageDirection(0, 0, 4), 0)
+    assert.strictEqual(pageDirection(0, 1, 1), 0)
   })
 
   // 3. Zoom percentage label.

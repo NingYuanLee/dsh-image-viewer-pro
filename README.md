@@ -4,7 +4,7 @@
 [![DSH](https://img.shields.io/badge/DSH-%E2%89%A50.2.1--rc.2-4D6BFE)](https://github.com/deepseek-ai/deepseek-harness)
 [![release](https://img.shields.io/github/v/release/NingYuanLee/dsh-image-viewer-pro?sort=semver)](https://github.com/NingYuanLee/dsh-image-viewer-pro/releases)
 
-**A real image viewer for images inside DeepSeek Harness conversations.** Wheel zoom, drag pan, 90° rotate, download, copy, open in the default app, and gallery browsing — replacing the stock preview that only offers a close button.
+**A viewer for images inside a DeepSeek Harness conversation — not a close button with a picture behind it.** Zoom, pan, rotate, a gallery, download, copy, a dialog you can drag, and open-with the apps already on the machine, in one layer. Wheel, drag, and rotate update on the compositor once per frame; the next image is decoded before it is shown, so a page turn does not flash at the wrong size. It replaces the stock preview that only offers Close.
 
 English | [中文](README.zh.md)
 
@@ -18,14 +18,17 @@ The viewer improves *looking*; it cannot make an image appear. See [Getting imag
 
 ## Features
 
-- **Zoom** — wheel zooms around the pointer; the footer shows `− [percent] +` and the percentage is editable (Enter applies, Esc reverts); press and hold ± to keep zooming.
+- **Zoom** — wheel zooms around the pointer. One mouse notch is about 12% and eases in over a few frames; trackpad ticks stay continuous. The footer shows `− [percent] +` and the percentage is editable (Enter applies, Esc reverts). A tap on ± matches one notch; holding ± zooms continuously (about one doubling every 0.7s). Keyboard `+` / `-` stays a 25% step. The scale stays within 5%–4000%.
 - **Pan** — drag the canvas; double-click toggles fit ↔ actual size.
-- **Rotate** — 90° per click.
+- **Footer** — the controls sit in three groups separated by hairlines: zoom, fit / 1:1, and rotate.
+- **Move the dialog** — drag its title bar; the dialog stays inside the backdrop (never over the desktop's native title/menu bar) and is pulled back into bounds when the window is resized.
+- **Header info** — the title row shows `width × height | format | file size` with values only; the format is uppercase (JPG/PNG/SVG/BMP/WEBP…) and the size switches between B, KB and MB (one decimal for KB/MB).
+- **Rotate** — counterclockwise on the left, clockwise on the right, 90° per click, with the current angle centered between them.
 - **Download original** — with progress; saves to the system downloads folder.
 - **Copy image** — writes a PNG to the clipboard.
 - **Gallery** — browse the other images in the same conversation with the round side arrows or `←` / `→`; shows `current / total`.
-- **Open with default app** — local files go through the Host's `session.openWorkspacePath` (OS default viewer); remote `http(s)` images open in the default browser.
-- **Native look** — the backdrop and dialog use DSH theme tokens, follow light/dark, keep the host window buttons uncovered, and honour `prefers-reduced-motion`.
+- **Open** — a local file uses a split button. The main face shows the default app's icon and opens the file with that app; the menu lists every associated app reported by `session.workspacePathApplications` (the default is marked) and ends with "Show file location". A remote `http(s)` image stays a new-tab button. `blob:` and `data:` sources hide it. Opening and revealing both go through the Host's `session.openWorkspacePath`.
+- **Native look** — the backdrop covers the window content area (the app's own top toolbar included) but stops below the desktop frame's native title/menu bar on Windows (`--dsh-frame-chrome-top`), and the dialog moves only inside that area; both use DSH theme tokens, follow light/dark, and honour `prefers-reduced-motion`.
 
 ## What it takes over
 
@@ -85,7 +88,8 @@ A quick way to test the whole chain: ask "screenshot it and inline it" for a pag
 | `-` | Zoom out |
 | `0` | Fit to window |
 | `1` | Actual size (1:1) |
-| `R` | Rotate 90° |
+| `R` | Rotate 90° clockwise |
+| `Shift`+`R` | Rotate 90° counterclockwise |
 | `←` / `→` | Previous / next image |
 | Double-click | Fit ↔ actual size |
 
@@ -138,7 +142,7 @@ Or disable / remove it from the Plugins page. Uninstalling restores the stock pr
 
 - Verified on **DSH `0.2.1-rc.2`** (Web GUI and desktop, both Web renderers).
 - Declares `engines.dsh: >=0.2.1-rc.2 <0.3.0-0` and `engines.node: >=22.19.0`, checked on install and profile boot.
-- Uses the Host `remote` / `remote.session` services for "open with default app"; when unavailable that action degrades to a notice and everything else keeps working.
+- Uses the Host `remote` / `remote.session` services to open or reveal a local file. When those services are unavailable the action degrades to a notice and everything else keeps working.
 
 ## Conformance with DSH plugin conventions
 
@@ -180,7 +184,7 @@ For local development, install the directory into a profile as a `link:` depende
 ## Privacy
 
 - No third-party requests, no access to model credentials.
-- Download / copy only touch the current image; "open with default app" goes through DSH's Host-side capability.
+- Download / copy only touch the current image. Opening or revealing a local file goes through DSH's Host-side capability.
 - Interception only affects clicks: no message content is injected and no session record is modified.
 
 ## Known limitations

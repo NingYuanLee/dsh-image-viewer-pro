@@ -28,9 +28,12 @@ const manifest = require(path.join(root, 'package.json'))
 const near = (actual, expected, tolerance = 1e-9) => Math.abs(actual - expected) <= tolerance
 
 let clamp
+let clampPanelPosition
 let fitScale
 let fileNameOf
 let percentOf
+let formatBytes
+let formatOf
 
 let passed = 0
 const check = (name, fn) => {
@@ -43,7 +46,7 @@ async function main() {
   // Load the ESM bundle through import() so Node 20 (no require(esm)) works too;
   // the bundle registers itself against the stubbed __ModuleLoader__ on load.
   await import(pathToFileURL(path.join(root, 'client.js')).href)
-  ;({ clamp, fitScale, fileNameOf, percentOf } = bundle.__test)
+  ;({ clamp, clampPanelPosition, fitScale, fileNameOf, percentOf, formatBytes, formatOf } = bundle.__test)
 
   // 0. Registration id must be the package name: the boot graph keys every row
   //    by package name (`window.__DSH_BOOT__.entries[].id`), and the loader only
@@ -67,6 +70,40 @@ async function main() {
     assert.ok(near(fitScale(400, 2000, 800, 600), 0.3))
     // Missing natural size falls back to 1:1 instead of dividing by zero.
     assert.strictEqual(fitScale(0, 0, 800, 600), 1)
+  })
+
+  // 2b. Dialog drag bounds: the whole dialog box stays inside the mask.
+  check('panel drag bounds', () => {
+    // Free movement inside the mask is preserved.
+    assert.deepStrictEqual(clampPanelPosition(120, 80, 600, 400, 1200, 900), { left: 120, top: 80 })
+    // Dragging past the top/left edge stops at the edge.
+    assert.deepStrictEqual(clampPanelPosition(-90, -40, 600, 400, 1200, 900), { left: 0, top: 0 })
+    // Dragging past the bottom/right edge stops when the far edge reaches it.
+    assert.deepStrictEqual(clampPanelPosition(900, 700, 600, 400, 1200, 900), { left: 600, top: 500 })
+    // A mask smaller than the dialog pins it to the origin instead of going negative.
+    assert.deepStrictEqual(clampPanelPosition(50, 50, 800, 700, 700, 600), { left: 0, top: 0 })
+  })
+
+  // 2c. Header meta line: uppercase format labels and B/KB/MB size labels.
+  check('image meta labels', () => {
+    assert.strictEqual(formatBytes(0), '0 B')
+    assert.strictEqual(formatBytes(1023), '1023 B')
+    assert.strictEqual(formatBytes(1024), '1.0 KB')
+    assert.strictEqual(formatBytes(1536), '1.5 KB')
+    assert.strictEqual(formatBytes(1024 * 1024 - 1), '1024.0 KB')
+    assert.strictEqual(formatBytes(1024 * 1024), '1.0 MB')
+    assert.strictEqual(formatBytes(3.5 * 1024 * 1024), '3.5 MB')
+    assert.strictEqual(formatBytes(Number.NaN), '')
+
+    // data:/blob: sources are labelled by their media type.
+    assert.strictEqual(formatOf('data:image/svg+xml;charset=utf-8,...'), 'SVG')
+    assert.strictEqual(formatOf('blob:http://127.0.0.1/abc', 'image/webp'), 'WEBP')
+    // Content type wins over the extension; the extension is the fallback.
+    assert.strictEqual(formatOf('/api/file?path=x.bmp', 'application/octet-stream'), 'BMP')
+    assert.strictEqual(formatOf('/api/file?path=D%3A%2Fshots%2Fa.PNG'), 'PNG')
+    assert.strictEqual(formatOf('https://example.com/pic.jpeg'), 'JPG')
+    assert.strictEqual(formatOf('https://example.com/no-extension'), '')
+    assert.strictEqual(formatOf('blob:http://127.0.0.1/abc'), '')
   })
 
   // 3. Zoom percentage label.

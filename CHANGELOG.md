@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.1.6
+
+- 声明并验证对 DeepSeek Harness 0.2.2 预发布版的支持：插件不注册任何 slot，只用 `window.__ModuleLoader__` 装载契约与 `remote.session` 的空会话相关内容，这两者在 0.2.2 均未变（「Session 多实例」改造只影响 session 作用域 slot/hook，本插件不涉及）。`engines.dsh` 已覆盖该版本。无代码改动。
+- 已用 DSH 0.2.2-rc.1 内核验证加载与全部测试。
+
 ## 0.1.5
 
 - 图集换图不再硬切：新图从所点方向推入，旧图向反方向离开，两张都保持不透明，大约 420ms，曲线与弹窗打开一致。连点会先停住上一次滑动再播下一次；`prefers-reduced-motion` 时仍立即切换。

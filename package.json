@@ -1,6 +1,6 @@
 {
   "name": "dsh-image-viewer-pro",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "A proper image viewer for DeepSeek Harness: zoom, pan, rotate, download, copy, open with the default app, and gallery browsing for images inside the chat.",
   "type": "module",
   "main": "index.js",
@@ -29,7 +29,7 @@
   ],
   "engines": {
     "node": ">=22.19.0",
-    "dsh": ">=0.2.1-rc.2 <0.3.0-0"
+    "dsh": ">=0.2.1-rc.2 <0.3.0-0 || >=0.2.2-0 <0.3.0-0"
   },
   "icon": "./icon.svg",
   "exports": {

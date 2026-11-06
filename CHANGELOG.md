@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.1.7
+
+- 把 `engines.dsh` 放宽为 `>=0.2.1-rc.2 <0.3.0-0 || >=0.2.2-0 <0.3.0-0`，让声明区间覆盖本插件实测通过的 DSH 0.2.2 预发布线；原单区间写法会排除 0.2.2 预发布，而 peer 区间本就接受它。运行时无改动。
+- 统一 README 徽章行（CI、npm、MIT 许可、Node、dsh 区间、`dsh-plugin` topic、release、powered by dsh），并让兼容性与规范自查表与声明区间一致。
+
 ## 0.1.6
 
 - 声明并验证对 DeepSeek Harness 0.2.2 预发布版的支持：插件不注册任何 slot，只用 `window.__ModuleLoader__` 装载契约与 `remote.session` 的空会话相关内容，这两者在 0.2.2 均未变（「Session 多实例」改造只影响 session 作用域 slot/hook，本插件不涉及）。`engines.dsh` 已覆盖该版本。无代码改动。

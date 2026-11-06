@@ -1,8 +1,6 @@
 # dsh-image-viewer-pro
 
-[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![DSH](https://img.shields.io/badge/DSH-%E2%89%A50.2.1--rc.2-4D6BFE)](https://github.com/deepseek-ai/deepseek-harness)
-[![release](https://img.shields.io/github/v/release/NingYuanLee/dsh-image-viewer-pro?sort=semver)](https://github.com/NingYuanLee/dsh-image-viewer-pro/releases)
+[![CI](https://github.com/NingYuanLee/dsh-image-viewer-pro/actions/workflows/test.yml/badge.svg)](https://github.com/NingYuanLee/dsh-image-viewer-pro/actions/workflows/test.yml) [![npm](https://img.shields.io/npm/v/dsh-image-viewer-pro.svg)](https://www.npmjs.com/package/dsh-image-viewer-pro) [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE) [![Node >=22.19](https://img.shields.io/badge/node-%3E%3D22.19.0-339933.svg)](#兼容性) [![dsh](https://img.shields.io/badge/dsh-%3E%3D0.2.1--rc.2%20%3C0.3.0--0%20%7C%7C%20%3E%3D0.2.2--0%20%3C0.3.0--0-6f42c1)](#兼容性) [![topic: dsh-plugin](https://img.shields.io/badge/topic-dsh--plugin-6f42c1.svg)](https://github.com/topics/dsh-plugin) [![release](https://img.shields.io/github/v/release/NingYuanLee/dsh-image-viewer-pro?sort=semver)](https://github.com/NingYuanLee/dsh-image-viewer-pro/releases) [![powered by dsh](https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&logo=deepseek&logoColor=white)](https://github.com/deepseek-ai/deepseek-harness)
 
 **聊天里的图片，按查看器来用，而不是一张图加一个关闭按钮。** 缩放、平移、旋转、图集、下载、复制、拖动窗口，以及用这台电脑上已有的应用打开，都在同一个弹层里。滚轮、拖动和旋转每帧只更新合成层；下一张先解码再换上，避免切图时先闪到错误比例。它替换官方只有「关闭」的预览。
 
@@ -183,8 +181,8 @@ dsh plugin --profile web remove dsh-image-viewer-pro
 
 ## 兼容性
 
-- 已在 **DSH `0.2.1-rc.2`**（Web GUI / 桌面端，同为 Web 渲染层）实机验证。
-- 声明 `engines.dsh: >=0.2.1-rc.2 <0.3.0-0` 与 `engines.node: >=22.19.0`，安装与启动时会校验。
+- 已在 **DSH `0.2.1-rc.2`**（Web GUI / 桌面端，同为 Web 渲染层）与 **DSH `0.2.2-rc.1`** 实机验证。
+- 声明 `engines.dsh: >=0.2.1-rc.2 <0.3.0-0 || >=0.2.2-0 <0.3.0-0` 与 `engines.node: >=22.19.0`，安装与启动时会校验。
 - 依赖 Host 的 `remote` / `remote.session` 服务来打开本地文件或显示文件位置；服务不可用时该操作退化为提示，不影响其他功能。
 
 ## 与 DSH 插件规范的对齐
@@ -196,7 +194,7 @@ dsh plugin --profile web remove dsh-image-viewer-pro
 | `package.json` 声明 `dsh.bundle`（可被 `dsh plugin add` 安装） | ✅ `dsh.bundle.patch` |
 | `package.json` 声明 `dsh.manifestVersion: 1` | ✅ `dsh.manifestVersion: 1` |
 | 仓库根提供 `cordis.patch.yml`，行名与包名一致 | ✅ `name: dsh-image-viewer-pro` |
-| 声明支持的 DSH 版本 | ✅ `engines.dsh: >=0.2.1-rc.2 <0.3.0-0` |
+| 声明支持的 DSH 版本 | ✅ `engines.dsh: >=0.2.1-rc.2 <0.3.0-0 \|\| >=0.2.2-0 <0.3.0-0` |
 | 声明支持的 Node 版本 | ✅ `engines.node: >=22.19.0` |
 | 官方 `@deepseek-ai/*` 包用 `peerDependencies` 声明 | ✅ 不 import 任何官方包，无需 peer |
 | 插件元信息（标题/描述/图标） | ✅ `locale/{zh,en}.json` + `icon.svg` |

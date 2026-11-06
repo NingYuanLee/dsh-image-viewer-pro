@@ -157,7 +157,7 @@ async function main() {
     // The bundle imports no client module, so it must not order itself behind one.
     assert.strictEqual(manifest.dsh.client.inject, undefined)
     assert.strictEqual(manifest.dsh.manifestVersion, 1)
-    assert.strictEqual(manifest.engines.dsh, '>=0.2.1-rc.2 <0.3.0-0')
+    assert.strictEqual(manifest.engines.dsh, '>=0.2.1-rc.2 <0.3.0-0 || >=0.2.2-0 <0.3.0-0')
     assert.strictEqual(manifest.engines.node, '>=22.19.0')
     assert.ok(manifest.keywords.includes('dsh-plugin'))
   })

@@ -1,8 +1,6 @@
 # dsh-image-viewer-pro
 
-[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![DSH](https://img.shields.io/badge/DSH-%E2%89%A50.2.1--rc.2-4D6BFE)](https://github.com/deepseek-ai/deepseek-harness)
-[![release](https://img.shields.io/github/v/release/NingYuanLee/dsh-image-viewer-pro?sort=semver)](https://github.com/NingYuanLee/dsh-image-viewer-pro/releases)
+[![CI](https://github.com/NingYuanLee/dsh-image-viewer-pro/actions/workflows/test.yml/badge.svg)](https://github.com/NingYuanLee/dsh-image-viewer-pro/actions/workflows/test.yml) [![npm](https://img.shields.io/npm/v/dsh-image-viewer-pro.svg)](https://www.npmjs.com/package/dsh-image-viewer-pro) [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE) [![Node >=22.19](https://img.shields.io/badge/node-%3E%3D22.19.0-339933.svg)](#compatibility) [![dsh](https://img.shields.io/badge/dsh-%3E%3D0.2.1--rc.2%20%3C0.3.0--0%20%7C%7C%20%3E%3D0.2.2--0%20%3C0.3.0--0-6f42c1)](#compatibility) [![topic: dsh-plugin](https://img.shields.io/badge/topic-dsh--plugin-6f42c1.svg)](https://github.com/topics/dsh-plugin) [![release](https://img.shields.io/github/v/release/NingYuanLee/dsh-image-viewer-pro?sort=semver)](https://github.com/NingYuanLee/dsh-image-viewer-pro/releases) [![powered by dsh](https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square&logo=deepseek&logoColor=white)](https://github.com/deepseek-ai/deepseek-harness)
 
 **A viewer for images inside a DeepSeek Harness conversation — not a close button with a picture behind it.** Zoom, pan, rotate, a gallery, download, copy, a dialog you can drag, and open-with the apps already on the machine, in one layer. Wheel, drag, and rotate update on the compositor once per frame; the next image is decoded before it is shown, so a page turn does not flash at the wrong size. It replaces the stock preview that only offers Close.
 
@@ -181,8 +179,8 @@ Or disable / remove it from the Plugins page. Uninstalling restores the stock pr
 
 ## Compatibility
 
-- Verified on **DSH `0.2.1-rc.2`** (Web GUI and desktop, both Web renderers).
-- Declares `engines.dsh: >=0.2.1-rc.2 <0.3.0-0` and `engines.node: >=22.19.0`, checked on install and profile boot.
+- Verified on **DSH `0.2.1-rc.2`** (Web GUI and desktop, both Web renderers) and **DSH `0.2.2-rc.1`**.
+- Declares `engines.dsh: >=0.2.1-rc.2 <0.3.0-0 || >=0.2.2-0 <0.3.0-0` and `engines.node: >=22.19.0`, checked on install and profile boot.
 - Uses the Host `remote` / `remote.session` services to open or reveal a local file. When those services are unavailable the action degrades to a notice and everything else keeps working.
 
 ## Conformance with DSH plugin conventions
@@ -194,7 +192,7 @@ Checked against the official *Packaging and installing plugins* docs and the awe
 | `package.json` declares `dsh.bundle` (installable via `dsh plugin add`) | ✅ `dsh.bundle.patch` |
 | `package.json` declares `dsh.manifestVersion: 1` | ✅ `dsh.manifestVersion: 1` |
 | Root `cordis.patch.yml` whose row name matches the package | ✅ `name: dsh-image-viewer-pro` |
-| Supported DSH version range | ✅ `engines.dsh: >=0.2.1-rc.2 <0.3.0-0` |
+| Supported DSH version range | ✅ `engines.dsh: >=0.2.1-rc.2 <0.3.0-0 \|\| >=0.2.2-0 <0.3.0-0` |
 | Supported Node version | ✅ `engines.node: >=22.19.0` |
 | Official `@deepseek-ai/*` packages as `peerDependencies` | ✅ imports none, so no peers required |
 | Presentation metadata (title / description / icon) | ✅ `locale/{zh,en}.json` + `icon.svg` |
